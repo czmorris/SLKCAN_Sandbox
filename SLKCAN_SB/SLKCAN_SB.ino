@@ -50,6 +50,7 @@ byte  PossibleMaxAmps;
 byte  repspd;
 byte  gearmode; 
 byte  odo;  // can't possibly be just one byte. need to understand can msg better.
+byte blank;
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
@@ -60,6 +61,8 @@ void setup()
   Serial.begin(115200);
   Serial.println("Application Started");
   while(!Serial) { }
+
+  blank = 0;
 
   spiH.begin(14,12,13,15); //CLK,MISO,MOIS,SS
 
@@ -142,7 +145,7 @@ void BTTask( void * parameter )
   {
     SendCANFramesToSerialBT();
 
-    delay(500);
+    delay(100);
   }
 }
 
