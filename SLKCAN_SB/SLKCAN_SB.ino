@@ -12,6 +12,7 @@
 #define GEARMODEID 0xA0
 #define BMSID      0x19
 #define SPDID      0x98
+#define UNKID      0x2D0
 
 #define CLS             "\033[2J"
 #define HOME            "\033[H"
@@ -48,6 +49,7 @@ float PossibleAmps;
 byte  PossibleMaxAmps;
 byte  repspd;
 byte  gearmode; 
+byte  odo;  // can't possibly be just one byte. need to understand can msg better.
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
@@ -138,38 +140,7 @@ void BTTask( void * parameter )
   // but only as fast as possible. Does not allow ISR bog. 
   for(;;)
   {
-    //clearTermScr();
-    //SerialBT.println("SLKCAN Bluetooth Terminal");
-    //SerialBT.println(" ");
-    //SerialBT.print("Gear/Mode: ");
-
-//    switch(gearmode)
-//    {
-//      case 0x01: // ECO
-//        SerialBT.print("ECO");
-//      break;
-//      case 0x02: // POWER
-//        SerialBT.print("POWER");
-//      break;
-//      case 0x03: // REVERSE
-//        SerialBT.print("REVERSE");
-//      break;
-//      case 0x17: // PARK
-//        SerialBT.print("PARK");
-//      break;
-//      default:
-//      break;
-//    }  
-
-    SerialBT.print(gearmode);
-    SerialBT.print(",");
-    SerialBT.print(BatterySoc);
-    SerialBT.print(",");
-    SerialBT.print(repspd);
-    SerialBT.print(",");
-    SerialBT.print(PossibleAmps);
-    SerialBT.println(";");
-    SerialBT.flush();
+    SendCANFramesToSerialBT();
 
     delay(500);
   }
@@ -250,10 +221,47 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       PossibleAmps = ((data[6]/255)*data[5]);
     break;
     case SPDID:
-      repspd - data[2];
+      repspd = data[2];
+    break;
+    case UNKID:
+      odo = data[2];
     break;
     default:
     break;
   }
+
+}
+
+void SendCANFramesToSerialBT()
+{
+  byte buf[8];
+
+  // build 1st realdash CAN frame, batterysoc, speed, gearmode
+  memcpy(buf, &BatterySoc, 1);
+  memcpy(buf + 1, &repspd, 1);
+  memcpy(buf + 2, &gearmode, 1);
+  memcpy(buf + 3, &odo, 1);
+  memcpy(buf + 4, &blank, 1);
+  memcpy(buf + 5, &blank, 1);
+  memcpy(buf + 6, &blank, 1);
+  memcpy(buf + 7, &blank, 1);
+
+  SendCANFrameToSerialBT(3201, buf); // ?? 3201 ??
+
+}
+
+
+void SendCANFrameToSerialBT(unsigned long canFrameId, const byte* frameData)
+{
+  // the 4 byte identifier at the beginning of each CAN frame
+  // this is required for RealDash to 'catch-up' on ongoing stream of CAN frames
+  const byte serialBlockTag[4] = { 0x44, 0x33, 0x22, 0x11 };
+  SerialBT.write(serialBlockTag, 4);
+
+  // the CAN frame id number (as 32bit little endian value)
+  SerialBT.write((const byte*)&canFrameId, 4);
+
+  // CAN frame payload
+  SerialBT.write(frameData, 8);
 
 }
