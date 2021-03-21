@@ -224,7 +224,7 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
     break;
     case BMSID:
       BatterySoc = data[1];
-      PossibleAmps = ((data[6]/255)*data[5]);
+      PossibleAmps = (byte)((data[6]/255)*data[5]);
     break;
     case SPDID:
       repthrottle = data[3];
