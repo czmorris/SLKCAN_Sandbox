@@ -47,9 +47,11 @@ bool  AttemptStream;
 byte  BatterySoc;
 float PossibleAmps;
 byte  PossibleMaxAmps;
-byte  repspd;
+byte  repthrottle;
 byte  gearmode; 
-byte  odo;  // can't possibly be just one byte. need to understand can msg better.
+byte  odo;      // can't possibly be just one byte. need to understand can msg better.
+byte  tripkm;
+byte  tripmi;
 byte blank;
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
@@ -63,6 +65,7 @@ void setup()
   while(!Serial) { }
 
   blank = 0;
+  tripkm = 0;
 
   spiH.begin(14,12,13,15); //CLK,MISO,MOIS,SS
 
@@ -224,10 +227,12 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       PossibleAmps = ((data[6]/255)*data[5]);
     break;
     case SPDID:
-      repspd = data[2];
+      repthrottle = data[3];
     break;
     case UNKID:
       odo = data[2];
+      tripkm = (byte)(data[5]/10);
+      tripmi = (byte)(tripkm * 0.621371);
     break;
     default:
     break;
@@ -238,14 +243,17 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
 void SendCANFramesToSerialBT()
 {
   byte buf[8];
+  byte amps;
+
+  amps = (byte)PossibleAmps;
 
   // build 1st realdash CAN frame, batterysoc, speed, gearmode
   memcpy(buf, &BatterySoc, 1);
-  memcpy(buf + 1, &repspd, 1);
+  memcpy(buf + 1, &repthrottle, 1);
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &odo, 1);
-  memcpy(buf + 4, &blank, 1);
-  memcpy(buf + 5, &blank, 1);
+  memcpy(buf + 4, &amps, 1);
+  memcpy(buf + 5, &tripkm, 1);
   memcpy(buf + 6, &blank, 1);
   memcpy(buf + 7, &blank, 1);
 
