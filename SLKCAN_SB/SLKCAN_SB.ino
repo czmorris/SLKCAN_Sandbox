@@ -1,5 +1,4 @@
-// Note: This test sketch started life an example from the MCP2551 library (Alexander Entinger).
-// It includes and makes use of the library but the sketch itself has been heavily modified. 
+// Note: This sketch uses the MCP2551 library (Alexander Entinger).
 
 #include <SPI.h>
 #include <ArduinoMCP2515.h>
@@ -8,11 +7,6 @@
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
-
-#define GEARMODEID 0xA0
-#define BMSID      0x19
-#define SPDID      0x98
-#define UNKID      0x2D0
 
 #define CLS             "\033[2J"
 #define HOME            "\033[H"
@@ -52,7 +46,9 @@ byte  gearmode;
 byte  odo;      // can't possibly be just one byte. need to understand can msg better.
 byte  tripkm;
 byte  tripmi;
-byte blank;
+byte  ssStatus;
+byte  posTemp;
+byte  blank;
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
@@ -64,6 +60,7 @@ void setup()
   Serial.println("Application Started");
   while(!Serial) { }
 
+  ssStatus = 0;
   blank = 0;
   tripkm = 0;
 
@@ -200,9 +197,6 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
 
   // Setup the pointer to the beginning
   pek = &printbuff[0];
-  
-  // Changed this to a format that can be understood by can2sky... 
-  // Note: can2sky didn't result in any helpful analysis but the format is fine how it is. 
 
   // Print the start of the line, adjust the buffer
   pek += sprintf(pek, "%d %08X %d ", timestamp_us, id, len);
@@ -219,23 +213,29 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
   // Lets pick out some data... 
   switch(id)
   {
-    case GEARMODEID:
-      gearmode = data[0];
-    break;
-    case BMSID:
+    case 0xA0:
+      gearmode = data[0];   // ECO, POWER, REV, PARK
+      break;
+    case 0x19:
       BatterySoc = data[1];
-      PossibleAmps = (byte)((data[6]/255)*data[5]);
-    break;
-    case SPDID:
-      repthrottle = data[3];
-    break;
-    case UNKID:
+      PossibleAmps = (byte)((data[6]/255)*data[5]);  // This is a hypothese for amps.. Could be very wrong.
+      break;
+    case 0x98:
+      repthrottle = data[3];  // This doesn't appear to be speed. Maybe some kind of demand signal. 
+      break;
+    case 0x2D0:
       odo = data[2];
-      tripkm = (byte)(data[5]/10);
-      tripmi = (byte)(tripkm * 0.621371);
-    break;
+      tripkm = (byte)(data[5]/10);        // Odometer kilometers
+      tripmi = (byte)(tripkm * 0.621371); // Odometer miles
+      break;
+    case 0x101:
+      ssStatus = data[5]; // Possible Side Stand Status (or a bitfield of status indicators?) 
+      break;
+    case 0x3BA:
+      posTemp = data[0];  // Possible controller temp? 
+      break;      
     default:
-    break;
+      break;
   }
 
 }
@@ -253,9 +253,9 @@ void SendCANFramesToSerialBT()
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &odo, 1);
   memcpy(buf + 4, &amps, 1);
-  memcpy(buf + 5, &tripkm, 1);
-  memcpy(buf + 6, &blank, 1);
-  memcpy(buf + 7, &blank, 1);
+  memcpy(buf + 5, &tripkm, 1);  // Note: This will certainly be larger than 255. Wont know the full data layout until I have more than 255 miles.
+  memcpy(buf + 6, &ssStatus, 1);
+  memcpy(buf + 7, &posTemp, 1);
 
   SendCANFrameToSerialBT(3201, buf); // ?? 3201 ??
 
@@ -274,5 +274,4 @@ void SendCANFrameToSerialBT(unsigned long canFrameId, const byte* frameData)
 
   // CAN frame payload
   SerialBT.write(frameData, 8);
-
 }
