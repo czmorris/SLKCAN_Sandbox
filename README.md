@@ -7,4 +7,4 @@ General Goals:
 - Eventually have SD card logging support. Waiting on SLKCAN01 boards for this.
 - Test Bluetooth support. In particular the ability to transmit data to a smartphone. 
 - Test parsing data from known CANbus messages
-- Eventually provide a basis for a public open source sketch to get people started using the board or customizing for their own usage. 
+- Provide a general basis for anyone using the board to get started on their own. 
