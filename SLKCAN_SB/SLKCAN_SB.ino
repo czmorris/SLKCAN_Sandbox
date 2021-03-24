@@ -218,7 +218,7 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       break;
     case 0x19:
       BatterySoc = data[1];
-      PossibleAmps = (byte)((data[6]/255)*data[5]);  // This is a hypothese for amps.. Could be very wrong.
+      PossibleAmps = (byte)((byte)(data[6]/255.0)*data[5]);  // This is a hypothese for amps.. Could be very wrong.
       break;
     case 0x98:
       repthrottle = data[3];  // This doesn't appear to be speed. Maybe some kind of demand signal. 
@@ -243,17 +243,18 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
 void SendCANFramesToSerialBT()
 {
   byte buf[8];
-  byte amps;
+  byte watts;
 
-  amps = (byte)PossibleAmps;
+  watts = (byte)(PossibleAmps * 72);
+
 
   // build 1st realdash CAN frame, batterysoc, speed, gearmode
   memcpy(buf, &BatterySoc, 1);
   memcpy(buf + 1, &repthrottle, 1);
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &odo, 1);
-  memcpy(buf + 4, &amps, 1);
-  memcpy(buf + 5, &tripkm, 1);  // Note: This will certainly be larger than 255. Wont know the full data layout until I have more than 255 miles.
+  memcpy(buf + 4, &watts, 1);
+  memcpy(buf + 5, &tripkm, 1);
   memcpy(buf + 6, &ssStatus, 1);
   memcpy(buf + 7, &posTemp, 1);
 
