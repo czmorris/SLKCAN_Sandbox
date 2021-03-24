@@ -1,5 +1,8 @@
 // Note: This sketch uses the MCP2551 library (Alexander Entinger).
 
+// Note: Add the ability to switch streaming output to a VT terminal style output.
+// This would be a quick and easy way to monitor "known" values while manipulating the bike.
+
 #include <SPI.h>
 #include <ArduinoMCP2515.h>
 #include "BluetoothSerial.h"
@@ -245,7 +248,10 @@ void SendCANFramesToSerialBT()
   byte buf[8];
   byte watts;
 
-  watts = (byte)(PossibleAmps * 72);
+  // Note: This won't be transmittable.
+  // The number is too large for a single byte.
+  // Scale to 255 for now. Handle in realdash... Quick and Ugly. Needs some cleanup.
+  watts = (byte)((PossibleAmps * 72) / 19.6);
 
 
   // build 1st realdash CAN frame, batterysoc, speed, gearmode
@@ -253,7 +259,7 @@ void SendCANFramesToSerialBT()
   memcpy(buf + 1, &repthrottle, 1);
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &odo, 1);
-  memcpy(buf + 4, &watts, 1);
+  memcpy(buf + 4, &PossibleAmps, 1);   
   memcpy(buf + 5, &tripkm, 1);
   memcpy(buf + 6, &ssStatus, 1);
   memcpy(buf + 7, &posTemp, 1);
