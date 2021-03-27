@@ -11,7 +11,7 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define STREAMCANMSGS   // Define to stream to the serial port for logging.
+//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
@@ -58,6 +58,7 @@ byte  ssStatus;
 byte  posTemp;
 byte  blank;
 float watts;
+float amps;
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
@@ -147,6 +148,13 @@ void BTTask( void * parameter )
   // but only as fast as possible. Does not allow ISR bog. 
   for(;;)
   { 
+    
+  // If STREAMCANMSGS is not enabled then print a terminal window on normal serial
+  #ifndef STREAMCANMSGS
+     printTermScreen();
+  #endif
+
+    
     SendCANFramesToSerialBT();
 
     delay(100);
@@ -226,11 +234,11 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       break;
     case 0x19:
       BatterySoc = data[1];
-      PossibleAmps = (byte)((byte)(data[6]/255.0)*data[5]);  // This is a hypothese for amps.. Could be very wrong.
-      watts = (float)(PossibleAmps * 72.0);                  // Estimate watts from rated battery voltage and "amps"
+      //amps = (float)(data[6]/255.0);                                // This is a hypothese for amps.. Could be very wrong. (lagged?)
+      //watts = (float)(((PossibleAmps/255.0)*(data[5]/10/0) * 72.0);            // Estimate watts from rated battery voltage and "amps"
       break;
     case 0x98:
-      repthrottle = data[3];  // This doesn't appear to be speed. Maybe some kind of demand signal. 
+      repthrottle = data[3];  // This doesn't appear to be speed. Maybe some kind of demand signal. Not certain its throttle.
       break;
     case 0x2D0:
       odo = data[2];
@@ -250,12 +258,7 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
 
 
 
-// If STREAMCANMSGS is not enabled then print a terminal window
-#ifndef STREAMCANMSGS
-   // Note: This should really be executed on a timed schedule. Just thrown here for now.
-   // This will slow down CANBUS reads. It should really be in another task.
-   printTermScreen();
-#endif
+
 
 }
 
