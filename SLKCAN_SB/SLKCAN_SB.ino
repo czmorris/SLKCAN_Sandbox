@@ -152,6 +152,7 @@ void BTTask( void * parameter )
   // If STREAMCANMSGS is not enabled then print a terminal window on normal serial
   #ifndef STREAMCANMSGS
      printTermScreen();
+     delay(500);
   #endif
 
     
@@ -234,8 +235,8 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       break;
     case 0x19:
       BatterySoc = data[1];
-      //amps = (float)(data[6]/255.0);                                // This is a hypothese for amps.. Could be very wrong. (lagged?)
-      //watts = (float)(((PossibleAmps/255.0)*(data[5]/10/0) * 72.0);            // Estimate watts from rated battery voltage and "amps"
+      amps = (float)((data[6] + (255.0 * data[7])) / 100.0);   
+      watts = (float)(amps * 72.0);     // This estimate is based on the rated voltage so its likely low. voltage can be in the 80s  
       break;
     case 0x98:
       repthrottle = data[3];  // This doesn't appear to be speed. Maybe some kind of demand signal. Not certain its throttle.
@@ -311,7 +312,7 @@ void printTermScreen()
   Serial.print("Battery Soc: ");
   Serial.println((int)BatterySoc);
   Serial.print("Possible Amps: ");
-  Serial.println((int)PossibleAmps);
+  Serial.println(amps);
   Serial.print("Estimated Watts: ");
   Serial.println(watts);
   Serial.print("Odometer Kilometers: ");
