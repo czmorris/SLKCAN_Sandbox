@@ -94,8 +94,10 @@ void setup()
   pinMode(MKRCAN_MCP2515_CS_PIN, OUTPUT);
   digitalWrite(MKRCAN_MCP2515_CS_PIN, HIGH);
   pinMode(MKRCAN_MCP2515_INT_PIN, INPUT_PULLUP);
+  
   // CZM, During testing I found that the ISR was getting hammered and interupt watchdog resets would happen.
   // I elected to use a dedicated task for handling messages as fast as it could instead of high interrupt load.
+  // Note that not every message will be seen.
   //attachInterrupt(digitalPinToInterrupt(MKRCAN_MCP2515_INT_PIN), onExternalEvent, FALLING);
 
   mcp2515.begin();
@@ -178,11 +180,7 @@ void BTTask( void * parameter )
 // so far unused. 
 void loop()
 {
-  // SD Card not initialized. Try
-  if(SDIsInit == false)
-  {
-    trySDinit();
-  }
+
 }
 
 void spi_select()
@@ -227,11 +225,10 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
   Serial.println(printbuff);
   
   // Note: Add ifdef?
+  // Note: How much will this impact timing? 
   writeSDCard(printbuff);  
     
 #endif
-
-
 
   // Lets pick out some data... 
   switch(id)
@@ -304,23 +301,7 @@ void clearTermScr()
   Serial.print(HOME);
 }
 
-// Quick hack, nothing special. Needs more work.
-void writeSDCard(char * data)
-{
-   // Note: Add better checking here. This is just for testing.
-   File file = SD.open("/TESTLOG.txt", FILE_APPEND);
 
-   if(file)
-   {        
-     file.println(data);
-     file.close();
-   }
-   else
-   {
-     SDIsInit = false; // Try to force a reinit on the next cycle... 
-      //Serial.println("Could not write to the SD Card!");
-   }  
-}
 
 
 // Print a simplified terminal screen for quick testing CANbus finds. 
@@ -361,4 +342,32 @@ void trySDinit()
     //Serial.println("SD Card Init!");
     SDIsInit = true;
   }
+}
+
+// Quick hack, nothing special. Needs more work.
+void writeSDCard(char * data)
+{
+
+    // SD Card not initialized. Try
+  if(SDIsInit == false)
+  {
+    trySDinit();
+  }
+  else
+  {
+    // Note: Add better checking here. This is just for testing.
+   File file = SD.open("/TESTLOG.txt", FILE_APPEND);
+
+   if(file)
+   {        
+     file.println(data);
+     file.close();
+   }
+   else
+   {
+     SDIsInit = false; // Try to force a reinit on the next cycle... 
+      //Serial.println("Could not write to the SD Card!");
+   }     
+  }
+  
 }
