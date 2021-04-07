@@ -3,6 +3,7 @@
 // Note: Add the ability to switch streaming output to a VT terminal style output.
 // This would be a quick and easy way to monitor "known" values while manipulating the bike.
 
+#include "SD.h"
 #include <SPI.h>
 #include <ArduinoMCP2515.h>
 #include "BluetoothSerial.h"
@@ -25,6 +26,8 @@
 
 static int const MKRCAN_MCP2515_CS_PIN  = 15;
 static int const MKRCAN_MCP2515_INT_PIN = 4;
+#define SD_CS 5
+
 
 void    spi_select           ();
 void    spi_deselect         ();
@@ -33,6 +36,8 @@ void    onExternalEvent      ();
 void    onReceiveBufferFull  (uint32_t const, uint32_t const, uint8_t const *, uint8_t const);
 
 SPIClass spiH(HSPI);    // HSPI is used as to not conflict with the internal SPI flash on the ESP32
+SPIClass spiV(VSPI);    // VSPI is used with the SD Card.
+
 char printbuff[200];    // Buffer used to support string printing.
 
 ArduinoMCP2515 mcp2515(spi_select,
@@ -59,9 +64,13 @@ byte  posTemp;
 byte  blank;
 float watts;
 float amps;
+bool  SDIsInit = false;
+char filebuffer[50];
 
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
+
+
 
 // Primary entry point of the application. 
 void setup()
@@ -81,27 +90,22 @@ void setup()
   spiH.begin(14,12,13,15); //CLK,MISO,MOIS,SS
 
   /* Setup SPI access */
-  spiH.begin();
+  spiH.begin();  // Note: Why again?
   pinMode(MKRCAN_MCP2515_CS_PIN, OUTPUT);
   digitalWrite(MKRCAN_MCP2515_CS_PIN, HIGH);
-
-  // has been used for debug. commented now.
-  //pinMode(32, OUTPUT);
-  //digitalWrite(32, LOW);
-
   pinMode(MKRCAN_MCP2515_INT_PIN, INPUT_PULLUP);
   // CZM, During testing I found that the ISR was getting hammered and interupt watchdog resets would happen.
   // I elected to use a dedicated task for handling messages as fast as it could instead of high interrupt load.
   //attachInterrupt(digitalPinToInterrupt(MKRCAN_MCP2515_INT_PIN), onExternalEvent, FALLING);
 
-
-
   mcp2515.begin();
   mcp2515.setBitRate(CanBitRate::BR_500kBPS_8MHZ);
-  //mcp2515.setListenOnlyMode();
   mcp2515.setNormalMode();
-  Serial.println("Listening");
 
+  // VSPI is used for the SD Card.
+  spiV.begin(18, 19, 23, 5);  // CLK, MISO, MOSI, SS
+
+  Serial.println("Listening");
   SerialBT.begin("SLKCAN"); //Bluetooth device name
 
 
@@ -135,6 +139,7 @@ void mcpTask( void * parameter )
 {
   // Get MCP messages as fast as possible...
   // but only as fast as possible. Does not allow ISR bog. 
+  // Note: This will not catch every single message!
   for(;;)
   {
     if(digitalRead(MKRCAN_MCP2515_INT_PIN)==LOW)
@@ -173,36 +178,25 @@ void BTTask( void * parameter )
 // so far unused. 
 void loop()
 {
-  //digitalWrite(32, HIGH);
-  //delay(500);
-  //digitalWrite(32, LOW);
-  //delay(100);
+  // SD Card not initialized. Try
+  if(SDIsInit == false)
+  {
+    trySDinit();
+  }
 }
 
 void spi_select()
-{
-  digitalWrite(MKRCAN_MCP2515_CS_PIN, LOW);
-}
+{digitalWrite(MKRCAN_MCP2515_CS_PIN, LOW);}
 
 void spi_deselect()
-{
-  digitalWrite(MKRCAN_MCP2515_CS_PIN, HIGH);
-}
+{digitalWrite(MKRCAN_MCP2515_CS_PIN, HIGH);}
 
 uint8_t spi_transfer(uint8_t const data)
-{
-  return spiH.transfer(data);
-}
+{return spiH.transfer(data);}
 
 void onExternalEvent()
 {
-  // Note: CZM. Commented out the interrupt handling stuff, its not necessary in the task driven configuration.
-  //GPIO.pin[MKRCAN_MCP2515_INT_PIN].int_ena = 0; 
-  //digitalWrite(32, LOW);
   mcp2515.onExternalEventHandler();
-  //digitalWrite(32, HIGH); 
-  //GPIO.pin[MKRCAN_MCP2515_INT_PIN].int_ena = 1; 
-  //GPIO.status_w1tc = GPIO.status;
 }
 
 void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t const * data, uint8_t const len)
@@ -231,7 +225,13 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
 
   // Finally print the entire buffer.
   Serial.println(printbuff);
+  
+  // Note: Add ifdef?
+  writeSDCard(printbuff);  
+    
 #endif
+
+
 
   // Lets pick out some data... 
   switch(id)
@@ -262,10 +262,6 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
     default:
       break;
   }
-
-
-
-
 
 }
 
@@ -308,6 +304,25 @@ void clearTermScr()
   Serial.print(HOME);
 }
 
+// Quick hack, nothing special. Needs more work.
+void writeSDCard(char * data)
+{
+   // Note: Add better checking here. This is just for testing.
+   File file = SD.open("/TESTLOG.txt", FILE_APPEND);
+
+   if(file)
+   {        
+     file.println(data);
+     file.close();
+   }
+   else
+   {
+     SDIsInit = false; // Try to force a reinit on the next cycle... 
+      //Serial.println("Could not write to the SD Card!");
+   }  
+}
+
+
 // Print a simplified terminal screen for quick testing CANbus finds. 
 // Best viewed in a terminal emulator.
 void printTermScreen()
@@ -331,4 +346,19 @@ void printTermScreen()
   Serial.println((int)posTemp); 
   Serial.print("Stand Status?: ");
   Serial.println(ssStatus, HEX); 
+}
+
+// Try to reinit the sd card.
+void trySDinit()
+{
+  if(!SD.begin(SD_CS, spiV))
+  {
+    //Serial.println("Card Mount Failed!");
+    SDIsInit = false;
+  }
+  else
+  {
+    //Serial.println("SD Card Init!");
+    SDIsInit = true;
+  }
 }
