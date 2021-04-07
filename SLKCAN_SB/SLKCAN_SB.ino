@@ -11,7 +11,7 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
+#define STREAMCANMSGS   // Define to stream to the serial port for logging.
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
@@ -66,6 +66,10 @@ TaskHandle_t Task2;  // Bluetooth Terminal Interface
 // Primary entry point of the application. 
 void setup()
 {
+  //pinMode(26, OUTPUT);
+  //digitalWrite(26, HIGH);
+
+  
   Serial.begin(115200);
   Serial.println("Application Started");
   while(!Serial) { }
@@ -89,6 +93,8 @@ void setup()
   // CZM, During testing I found that the ISR was getting hammered and interupt watchdog resets would happen.
   // I elected to use a dedicated task for handling messages as fast as it could instead of high interrupt load.
   //attachInterrupt(digitalPinToInterrupt(MKRCAN_MCP2515_INT_PIN), onExternalEvent, FALLING);
+
+
 
   mcp2515.begin();
   mcp2515.setBitRate(CanBitRate::BR_500kBPS_8MHZ);
@@ -135,7 +141,7 @@ void mcpTask( void * parameter )
     {
       mcp2515.onExternalEventHandler();
     }    
-    delay(1);
+    delay(5);
   }
 }
 
