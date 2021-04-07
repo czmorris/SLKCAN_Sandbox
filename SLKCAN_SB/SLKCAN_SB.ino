@@ -75,8 +75,13 @@ TaskHandle_t Task2;  // Bluetooth Terminal Interface
 // Primary entry point of the application. 
 void setup()
 {
+  // Level Translator IC Enable. (Active High)
   //pinMode(26, OUTPUT);
   //digitalWrite(26, HIGH);
+
+  // Heartbeat pin
+  pinMode(16, OUTPUT);
+  digitalWrite(16, HIGH); // Start off
 
   
   Serial.begin(115200);
@@ -180,7 +185,11 @@ void BTTask( void * parameter )
 // so far unused. 
 void loop()
 {
-
+  // Heartbeat LED... 
+  digitalWrite(16, LOW);
+  delay(1000);
+  digitalWrite(16, HIGH);
+  delay(1000);
 }
 
 void spi_select()
@@ -277,7 +286,6 @@ void SendCANFramesToSerialBT()
   memcpy(buf + 7, &posTemp, 1);
 
   SendCANFrameToSerialBT(3201, buf); // ?? 3201 ??
-
 }
 
 void SendCANFrameToSerialBT(unsigned long canFrameId, const byte* frameData)
@@ -300,8 +308,6 @@ void clearTermScr()
   Serial.print(CLS);
   Serial.print(HOME);
 }
-
-
 
 
 // Print a simplified terminal screen for quick testing CANbus finds. 
