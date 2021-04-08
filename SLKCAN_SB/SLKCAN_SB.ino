@@ -1,7 +1,13 @@
-// Note: This sketch uses the MCP2551 library (Alexander Entinger).
+/*
+Note: This sketch uses the MCP2551 library (Alexander Entinger).
 
-// Note: Add the ability to switch streaming output to a VT terminal style output.
-// This would be a quick and easy way to monitor "known" values while manipulating the bike.
+This sketch was created by Zach M. for the purpose of acting as a sandbox for the SLKCAN
+board. This could be used as a jumping off point for anyone interested in working with the board.
+This is not a commercial product and no warranty is provided. This code is not guaranteed to be 
+error free. It is quick code intended to test the features of the board. 
+
+This code may change frequently as a testbed for the board.
+*/
 
 #include "SD.h"
 #include <SPI.h>
@@ -16,6 +22,10 @@
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
+#define BTTESTTERM     /* If defined bluetooth sends a terminal output 
+rather than realdash data */
+
+
 #define CLS             "\033[2J"
 #define HOME            "\033[H"
 
@@ -25,8 +35,13 @@
 #include <algorithm>
 
 static int const MKRCAN_MCP2515_CS_PIN  = 15;
-static int const MKRCAN_MCP2515_INT_PIN = 4;
-#define SD_CS 5
+static int const MKRCAN_MCP2515_INT_PIN = 35; // Note: Caused bluetooth issues on 4, SLKCAN01. 
+/* 20210408 Moved to IO35, This goes up to 5v so it really should have been tri-stated/shifted. Oops... 
+On IO35 it doesn't seem to bother bluetooth. This needs to be tested with the bike later
+to make sure that it actually works!*/
+
+
+#define SD_CS 5  // Micro-SD card chip select. 
 
 
 void    spi_select           ();
@@ -83,7 +98,6 @@ void setup()
   pinMode(16, OUTPUT);
   digitalWrite(16, HIGH); // Start off
 
-  
   Serial.begin(115200);
   Serial.println("Application Started");
   while(!Serial) { }
@@ -114,7 +128,6 @@ void setup()
 
   Serial.println("Listening");
   SerialBT.begin("SLKCAN"); //Bluetooth device name
-
 
   // This creates the tasks. 
   // MCP reading pinned to Core 1
@@ -173,8 +186,32 @@ void BTTask( void * parameter )
      delay(500);
   #endif
 
-    
+
+#ifdef BTTESTTERM
+
+    // Print a terminal output to bluetooth.
+    SerialBT.print(CLS);
+    SerialBT.print(HOME);
+    SerialBT.print("BatSoc: ");
+    SerialBT.println(BatterySoc);
+    SerialBT.print("repthrottle: ");
+    SerialBT.println(repthrottle);
+    SerialBT.print("GearMode: ");
+    SerialBT.println(gearmode);
+    SerialBT.print("Odo: ");
+    SerialBT.println(odo);
+    SerialBT.print("PossibleAmps: ");
+    SerialBT.println(PossibleAmps);
+    SerialBT.print("tripkm: ");
+    SerialBT.println(tripkm);
+    SerialBT.print("ssStatus: ");
+    SerialBT.println(ssStatus);
+    SerialBT.print("posTemp: ");
+    SerialBT.println(posTemp);
+
+#else
     SendCANFramesToSerialBT();
+#endif
 
     delay(100);
   }
@@ -186,6 +223,9 @@ void BTTask( void * parameter )
 void loop()
 {
   // Heartbeat LED... 
+  // Note: Heartbeat LED not flashing? Design Issue?
+  // Confirmed. LED D2 is backwards on the schematic. 
+  // Turned it around on the test board and it works fine. 
   digitalWrite(16, LOW);
   delay(1000);
   digitalWrite(16, HIGH);
@@ -302,19 +342,12 @@ void SendCANFrameToSerialBT(unsigned long canFrameId, const byte* frameData)
   SerialBT.write(frameData, 8);
 }
 
-// Used for VT100 bluetooth testing. 
-void clearTermScr()
-{
-  Serial.print(CLS);
-  Serial.print(HOME);
-}
-
-
 // Print a simplified terminal screen for quick testing CANbus finds. 
-// Best viewed in a terminal emulator.
+// Best viewed in a terminal emulator. (For example Putty)
 void printTermScreen()
 { 
-  clearTermScr();
+  Serial.print(CLS);
+  Serial.print(HOME);
   Serial.print("Gear/Mode: ");
   Serial.println((int)gearmode);
   Serial.print("Battery Soc: ");
