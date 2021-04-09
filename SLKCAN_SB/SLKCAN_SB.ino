@@ -18,12 +18,11 @@ This code may change frequently as a testbed for the board.
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define STREAMCANMSGS   // Define to stream to the serial port for logging.
+//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
-#define BTTESTTERM     /* If defined bluetooth sends a terminal output 
-rather than realdash data */
+//#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
 
 
 #define CLS             "\033[2J"
@@ -82,6 +81,8 @@ float amps;
 bool  SDIsInit = false;
 char filebuffer[50];
 
+int debugcnt;
+
 TaskHandle_t Task1;  // MCP high priority updates from CAN
 TaskHandle_t Task2;  // Bluetooth Terminal Interface
 
@@ -90,9 +91,11 @@ TaskHandle_t Task2;  // Bluetooth Terminal Interface
 // Primary entry point of the application. 
 void setup()
 {
+   debugcnt = 0;
+  
   // Level Translator IC Enable. (Active High)
-  //pinMode(26, OUTPUT);
-  //digitalWrite(26, HIGH);
+  pinMode(26, OUTPUT);
+  digitalWrite(26, HIGH);
 
   // Heartbeat pin
   pinMode(16, OUTPUT);
@@ -166,7 +169,7 @@ void mcpTask( void * parameter )
     {
       mcp2515.onExternalEventHandler();
     }    
-    delay(5);
+    delay(1);
   }
 }
 
@@ -193,7 +196,7 @@ void BTTask( void * parameter )
     SerialBT.print(CLS);
     SerialBT.print(HOME);
     SerialBT.print("BatSoc: ");
-    SerialBT.println(BatterySoc);
+    SerialBT.println((int)BatterySoc);
     SerialBT.print("repthrottle: ");
     SerialBT.println(repthrottle);
     SerialBT.print("GearMode: ");
@@ -287,6 +290,7 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       break;
     case 0x19:
       BatterySoc = data[1];
+      debugcnt++;
       amps = (float)((data[6] + (255.0 * data[7])) / 100.0);   
       watts = (float)(amps * 72.0);     // This estimate is based on the rated voltage so its likely low. voltage can be in the 80s  
       break;
@@ -351,7 +355,7 @@ void printTermScreen()
   Serial.print("Gear/Mode: ");
   Serial.println((int)gearmode);
   Serial.print("Battery Soc: ");
-  Serial.println((int)BatterySoc);
+  Serial.println(BatterySoc);
   Serial.print("Possible Amps: ");
   Serial.println(amps);
   Serial.print("Estimated Watts: ");
@@ -359,13 +363,16 @@ void printTermScreen()
   Serial.print("Odometer Kilometers: ");
   Serial.println((int)odo);   // Note: This will eventually change. value doesn't fit into a byte.
   Serial.print("Trip Kilometers: ");
-  Serial.println(tripkmfloat);  
+  Serial.println((int)tripkmfloat);  
   Serial.print("Throttle?: ");
   Serial.println((int)repthrottle);  
   Serial.print("Temp?: ");
   Serial.println((int)posTemp); 
   Serial.print("Stand Status?: ");
   Serial.println(ssStatus, HEX); 
+  Serial.print("Debug: ");
+  Serial.println(debugcnt); 
+
 }
 
 // Try to reinit the sd card.
