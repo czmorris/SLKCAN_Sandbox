@@ -18,12 +18,13 @@ This code may change frequently as a testbed for the board.
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
+#define STREAMCANMSGS   // Define to stream to the serial port for logging.
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
 //#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
 
+//#define SIM  // run sim to manipulate some values, useful for testing without bike
 
 #define CLS             "\033[2J"
 #define HOME            "\033[H"
@@ -78,7 +79,7 @@ byte  posTemp;
 byte  blank;
 float watts;
 float amps;
-bool  SDIsInit = false;
+bool  SDIsInit;
 char filebuffer[50];
 
 int debugcnt;
@@ -92,6 +93,8 @@ TaskHandle_t Task2;  // Bluetooth Terminal Interface
 void setup()
 {
    debugcnt = 0;
+
+   SDIsInit = false;
   
   // Level Translator IC Enable. (Active High)
   pinMode(26, OUTPUT);
@@ -165,11 +168,20 @@ void mcpTask( void * parameter )
   // Note: This will not catch every single message!
   for(;;)
   {
+#ifdef SIM
+
+    SimVariables();
+    delay(1000);
+
+#else
+  
     if(digitalRead(MKRCAN_MCP2515_INT_PIN)==LOW)
     {
       mcp2515.onExternalEventHandler();
     }    
     delay(1);
+
+#endif
   }
 }
 
@@ -417,3 +429,36 @@ void writeSDCard(char * data)
   }
   
 }
+
+#ifdef SIM
+// Simulate for testing.... 
+void SimVariables()
+{
+  if(BatterySoc < 100)
+  {
+    BatterySoc++;
+  }
+  else if (BatterySoc >= 100)
+  {
+    BatterySoc = 0;
+  }
+
+  if(amps < 20)
+  {
+    amps++;
+  }
+  else if (amps >= 20)
+  {
+    amps = 0;
+  }
+  
+  watts = (float)(amps * 72.0);
+  odo = 100;
+  tripkmfloat = 10;
+
+  gearmode = 1;
+  repthrottle = 50;
+
+  //delay(1000);
+}
+#endif
