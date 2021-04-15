@@ -18,7 +18,7 @@ This code may change frequently as a testbed for the board.
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define STREAMCANMSGS   // Define to stream to the serial port for logging.
+//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
 // When not defined a simplistic terminal window will be printed instread.
 // Use putty or some other terminal emulator for viewing the data.
 
@@ -69,10 +69,11 @@ byte  BatterySoc;
 float PossibleAmps;
 byte  PossibleMaxAmps;
 byte  repthrottle;
+byte  rawkph;   // not exactly kph
+float  corrkph;
 byte  gearmode; 
 byte  odo;      // can't possibly be just one byte. need to understand can msg better.
-byte  tripkm;
-float tripkmfloat;
+float  tripkm;
 byte  tripmi;
 byte  ssStatus;
 byte  posTemp;
@@ -285,14 +286,16 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
     pek += sprintf(pek, "%02X ", data[i]);
   }
 
+
   // Finally print the entire buffer.
   Serial.println(printbuff);
+#endif
   
   // Note: Add ifdef?
   // Note: How much will this impact timing? 
-  writeSDCard(printbuff);  
+  //writeSDCard(printbuff);  
     
-#endif
+
 
   // Lets pick out some data... 
   switch(id)
@@ -311,16 +314,14 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       break;
     case 0x2D0:
       odo = data[2];
-      tripkm = (byte)(data[5]/10);        // Odometer kilometers
-      tripkmfloat = (float)(data[5]/10.0); 
-      //tripmi = (byte)(tripkm * 0.621371); // Odometer miles
+      tripkm = (float)((float)data[5]/10.0);        // Odometer kilometers
       break;
     case 0x101:
       ssStatus = data[5]; // Possible Side Stand Status (or a bitfield of status indicators?) 
-      break;
-    case 0x3BA:
-      posTemp = data[0];  // Possible controller temp? 
-      break;      
+      rawkph = data[1];
+      corrkph = (byte)((float)rawkph * 1.275);  // still not sure why the 1.275 is needed.
+      posTemp = (byte)(data[6] - 40);    // offset by 40 C
+      break;   
     default:
       break;
   }
@@ -331,13 +332,16 @@ void SendCANFramesToSerialBT()
 {
   byte buf[8];
 
+  byte kph = (byte)corrkph;
+  byte trip = (byte)tripkm;
+
   // build 1st realdash CAN frame, batterysoc, speed, gearmode
   memcpy(buf, &BatterySoc, 1);
-  memcpy(buf + 1, &repthrottle, 1);
+  memcpy(buf + 1, &kph, 1);
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &odo, 1);
   memcpy(buf + 4, &PossibleAmps, 1);   
-  memcpy(buf + 5, &tripkm, 1);
+  memcpy(buf + 5, &trip, 1);
   memcpy(buf + 6, &ssStatus, 1);
   memcpy(buf + 7, &posTemp, 1);
 
@@ -375,10 +379,12 @@ void printTermScreen()
   Serial.print("Odometer Kilometers: ");
   Serial.println((int)odo);   // Note: This will eventually change. value doesn't fit into a byte.
   Serial.print("Trip Kilometers: ");
-  Serial.println((int)tripkmfloat);  
-  Serial.print("Throttle?: ");
-  Serial.println((int)repthrottle);  
-  Serial.print("Temp?: ");
+  Serial.println(tripkm);  
+  Serial.print("Speed kph: ");
+  Serial.println(corrkph);  
+  Serial.print("Speed mph: ");
+  Serial.println((float)(corrkph/1.609));    
+  Serial.print("Controller Temp (C): ");
   Serial.println((int)posTemp); 
   Serial.print("Stand Status?: ");
   Serial.println(ssStatus, HEX); 
@@ -454,7 +460,7 @@ void SimVariables()
   
   watts = (float)(amps * 72.0);
   odo = 100;
-  tripkmfloat = 10;
+  //tripkmfloat = 10;
 
   gearmode = 1;
   repthrottle = 50;
