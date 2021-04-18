@@ -4,7 +4,7 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-//#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
+#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
 
 BluetoothSerial SerialBT; 
 
@@ -36,22 +36,28 @@ void BTTask( void * parameter )
     // Print a terminal output to bluetooth.
     SerialBT.print(CLS);
     SerialBT.print(HOME);
-    SerialBT.print("BatSoc: ");
-    SerialBT.println((int)BatterySoc);
-    SerialBT.print("repthrottle: ");
-    SerialBT.println(repthrottle);
-    SerialBT.print("GearMode: ");
-    SerialBT.println(gearmode);
-    SerialBT.print("Odo: ");
-    SerialBT.println(odo);
-    SerialBT.print("PossibleAmps: ");
-    SerialBT.println(PossibleAmps);
-    SerialBT.print("tripkm: ");
-    SerialBT.println(tripkm);
-    SerialBT.print("ssStatus: ");
-    SerialBT.println(ssStatus);
-    SerialBT.print("posTemp: ");
-    SerialBT.println(posTemp);
+    SerialBT.print("Gear/Mode: ");
+    SerialBT.println((int)gearmode);
+    SerialBT.print("Battery Soc: ");
+    SerialBT.println(BatterySoc);
+    SerialBT.print("Amps: ");
+    SerialBT.println(amps);
+    SerialBT.print("Estimated Watts: ");
+    SerialBT.println(watts);
+    SerialBT.print("Odometer Miles: ");
+    SerialBT.println((odo / 1.609));
+    SerialBT.print("Trip Miles: ");
+    SerialBT.println((tripkm / 1.609));  
+    SerialBT.print("Speed kph: ");
+    SerialBT.println(corrkph);  
+    SerialBT.print("Speed mph: ");
+    SerialBT.println((float)(corrkph / 1.609));    
+    SerialBT.print("Controller Temp (C): ");
+    SerialBT.println(posTemp); 
+    SerialBT.print("Stand Status?: ");
+    SerialBT.println(ssStatus, HEX); 
+    SerialBT.print("Debug: ");
+    SerialBT.println(debugcnt); 
 
 #else
     SendCANFramesToSerialBT();

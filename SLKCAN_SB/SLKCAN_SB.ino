@@ -1,8 +1,9 @@
 
 
-//#define STREAMCANMSGS   // Define to stream to the serial port for logging.
-// When not defined a simplistic terminal window will be printed instread.
-// Use putty or some other terminal emulator for viewing the data. See TERMINAL tab.
+#define STREAMCANMSGS   // stream can messages to serial or the sd card
+
+#define CLS             "\033[2J"
+#define HOME            "\033[H"
 
 char  printbuff[200];     // Buffer used to support string printing.
 //bool  AttemptStream; 

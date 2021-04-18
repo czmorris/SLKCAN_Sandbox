@@ -1,6 +1,4 @@
 
-#define CLS             "\033[2J"
-#define HOME            "\033[H"
 
 // Print a simplified terminal screen for quick testing CANbus finds. 
 // Best viewed in a terminal emulator. (For example Putty)

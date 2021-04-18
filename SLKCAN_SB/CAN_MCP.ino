@@ -124,11 +124,11 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
   }
 
   // Finally print the entire buffer.
-  Serial.println(printbuff);
+  //Serial.println(printbuff);
 
   // Note: Add ifdef?
   // Note: Could possibly slow down CAN transfers.
-  //writeSDCard(printbuff);   
+  writeSDCard(printbuff);   
 #endif
    
   // Lets pick out some data... 
