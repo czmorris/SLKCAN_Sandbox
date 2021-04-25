@@ -74,13 +74,13 @@ void SendCANFramesToSerialBT()
   unsigned short RDOdo = (unsigned short)odo;              // Odometer in km float to int
   unsigned short RDTrip = (unsigned short)(tripkm * 10.0); // trip in km float to int. 
   byte CTemp = (byte)(posTemp);                            // Controller Temp
-  byte kph = (byte)(kphhires);                             // For now kph.... change later
+  byte mph = (byte)(kphhires / 1.609);                     // For now kph.... change later
   byte BSoC = (byte)BatterySoc;
 
   // Made up frameid 3201
   // BatterySoc, speed, gearmode, odo, trip, controller temp
   memcpy(buf, &BSoC, 1);
-  memcpy(buf + 1, &kph, 1);
+  memcpy(buf + 1, &mph, 1);
   memcpy(buf + 2, &gearmode, 1);
   memcpy(buf + 3, &RDOdo, 2);
   // buf + 4 is still RDOdo  
