@@ -1,4 +1,3 @@
-//#define SIM  // run sim to manipulate some values, useful for testing without bike
 
 #ifdef SIM
 // Simulate for testing.... 
@@ -23,12 +22,13 @@ void SimVariables()
   }
   
   watts = (float)(amps * 72.0);
+  
   odo = 100;
-  //tripkmfloat = 10;
-
+  tripkm = 25.0;
   gearmode = 1;
-  repthrottle = 50;
 
-  //delay(1000);
+  kphhires = 35.0;
+
+  posTemp = 22.0;
 }
 #endif

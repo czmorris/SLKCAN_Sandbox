@@ -1,5 +1,5 @@
 /*
-Note: This sketch uses the MCP2551 library (Alexander Entinger).
+Note: This sketch uses the MCP2515 library (Alexander Entinger).
 
 This sketch was created by Zach M. for the purpose of acting as a sandbox for the SLKCAN
 board. This could be used as a jumping off point for anyone interested in working with the board.
@@ -153,6 +153,9 @@ void onReceiveBufferFull(uint32_t const timestamp_us, uint32_t const id, uint8_t
       
       break;
     case 0x2D0:
+
+      MphHiRes = (float)(((255.0 * data[1]) + data[0]) / 29.3);               // Note: Divide by ~29.3 to get mph
+      kphhires = MphHiRes * 1.609;
 
       // Odometer in Kilometers
       odo = (float)((255 * data[3]) + data[2]);

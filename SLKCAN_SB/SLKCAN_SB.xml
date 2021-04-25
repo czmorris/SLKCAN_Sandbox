@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RealDashCAN version="2">
+    <frames>
+		<frame id="3201">
+		  <value targetId="170" offset="0" length="1"></value> <!-- Fuel Level -->
+		  <value name="136" offset="1" length="1"></value>	   <!-- Speed kph -->   
+		  <value name="GMLS: Shifter position" offset="2" length="1" enum="1:ECO,2:POWER,3:R,23:P,#:err"></value>
+		  <value targetId="310" offset="3" length="2"></value> <!-- Odometer (km) -->	
+          <value targetId="311" offset="5" length="2" conversion="V / 10"></value> <!-- Trip A (km) -->
+          <value targetId="152" offset="7" length="1"></value> <!-- Oil Temp (Controller temp) -->
+		</frame>		
+    </frames>
+</RealDashCAN>

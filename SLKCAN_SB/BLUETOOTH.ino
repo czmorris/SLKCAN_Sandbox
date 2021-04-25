@@ -4,7 +4,7 @@
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
+//#define BTTESTTERM     /* If defined bluetooth sends a terminal output rather than realdash data */
 
 BluetoothSerial SerialBT; 
 
@@ -25,10 +25,10 @@ void BTTask( void * parameter )
     
   // If STREAMCANMSGS is not enabled then print a terminal window on normal serial
   // This would probably be better done somewhere else...
-  #ifndef STREAMCANMSGS
-     printTermScreen();
-     delay(500);
-  #endif
+  //#ifndef STREAMCANMSGS
+  //   printTermScreen();
+  //   delay(500);
+  //#endif
 
 
 #ifdef BTTESTTERM
@@ -71,28 +71,24 @@ void SendCANFramesToSerialBT()
 {
   byte buf[8];
 
-  // NOTE!!
-  // This needs to be redone.
-  // Study RealDash more and come up with the best method to transmit/pack each 
-  // element of information. 
+  unsigned short RDOdo = (unsigned short)odo;              // Odometer in km float to int
+  unsigned short RDTrip = (unsigned short)(tripkm * 10.0); // trip in km float to int. 
+  byte CTemp = (byte)(posTemp);                            // Controller Temp
+  byte kph = (byte)(kphhires);                             // For now kph.... change later
+  byte BSoC = (byte)BatterySoc;
 
-  // Commented out for now. 
-  // For now I will focus on good clean data via the terminal.
+  // Made up frameid 3201
+  // BatterySoc, speed, gearmode, odo, trip, controller temp
+  memcpy(buf, &BSoC, 1);
+  memcpy(buf + 1, &kph, 1);
+  memcpy(buf + 2, &gearmode, 1);
+  memcpy(buf + 3, &RDOdo, 2);
+  // buf + 4 is still RDOdo  
+  memcpy(buf + 5, &RDTrip, 2);
+  // buf + 5 is still RDTrip
+  memcpy(buf + 7, &CTemp, 1);
 
-//  byte kph = (byte)corrkph;
-//  byte trip = (byte)tripkm;
-//
-//  // build 1st realdash CAN frame, batterysoc, speed, gearmode
-//  memcpy(buf, &BatterySoc, 1);
-//  memcpy(buf + 1, &kph, 1);
-//  memcpy(buf + 2, &gearmode, 1);
-//  memcpy(buf + 3, &odo, 1);
-//  memcpy(buf + 4, &PossibleAmps, 1);   
-//  memcpy(buf + 5, &trip, 1);
-//  memcpy(buf + 6, &ssStatus, 1);
-//  memcpy(buf + 7, &posTemp, 1);
-
-//  SendCANFrameToSerialBT(3201, buf); // ?? 3201 ??
+  SendCANFrameToSerialBT(3201, buf);
 }
 
 void SendCANFrameToSerialBT(unsigned long canFrameId, const byte* frameData)

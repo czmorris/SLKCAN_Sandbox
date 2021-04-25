@@ -1,6 +1,7 @@
 
 
 #define STREAMCANMSGS   // stream can messages to serial or the sd card
+//#define SIM  // run sim to manipulate some values, useful for testing without bike
 
 #define CLS             "\033[2J"
 #define HOME            "\033[H"
@@ -19,6 +20,8 @@ float watts;              // For estimated watts. We don't have battery voltage 
 float amps;               // Filtered amps
 bool  SDIsInit;
 char  filebuffer[50];
+float kphhires;
+float MphHiRes;
 
 int debugcnt;
 
